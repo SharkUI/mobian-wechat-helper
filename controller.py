@@ -20,7 +20,8 @@ def main():
     root.mkdir(parents=True,mode=0o700,exist_ok=True);root.chmod(0o700)
     lock=os.open(f'/run/user/{os.getuid()}/wechat-swipe-controller.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
     fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    reader=Windows();workers={};failures={};retry={};geometry={};startup_maximized=set();running=True;last_check=0
+    reader=Windows();window_fd=reader.watch_window_changes()
+    workers={};failures={};retry={};geometry={};startup_maximized=set();startup_pids=set();running=True;last_check=0
     boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()
     focus=FocusRepair(reader);pending={};focus_requests=0
     socket_path=pathlib.Path(f'/run/user/{os.getuid()}/wechat-focus-requests.sock')
@@ -48,7 +49,9 @@ def main():
         temp.chmod(0o600);os.replace(temp,out)
     try:
         while running:
+            reader.drain_window_changes()
             now=time.monotonic()
+            deadlines=[now+.75]
             if now-last_check>=3:
                 if not main_pids():break
                 last_check=now
@@ -72,26 +75,38 @@ def main():
             for w in list(geometry):
                 if w not in mapped:geometry.pop(w)
             for w,pid in mapped.items():
-                entry=geometry.setdefault(w,dict(seen=now,signature=None,attempts=0,next=0))
-                if now-entry['seen']<1.5 or now<entry['next']:continue
+                entry=geometry.setdefault(w,dict(seen=now,signature=None,attempts=0,next=0,settle_until=0))
+                # Keep the initial chat-window grace period. Later windows of
+                # that process can be handled as soon as MapNotify wakes us.
+                ready=max(entry['next'],entry['seen']+(0 if pid in startup_pids else 1.5))
+                if now<ready:deadlines.append(ready);continue
                 # Moments is another ordinary window in the main process.
                 # Remember each XID/PID pair so later windows are not skipped.
                 key=(w,pid)
                 if key not in startup_maximized and reader.request_startup_maximize(w,pid):
-                    startup_maximized.add(key);entry['next']=now+1;continue
+                    startup_maximized.add(key);startup_pids.add(pid)
+                    entry.update(next=now+.01,settle_until=now+.3)
+                    deadlines.append(entry['next']);continue
                 placement=reader.align_maximized_main(w,pid)
-                if placement is None:entry['signature']=None;entry['attempts']=0;continue
+                if placement is None:
+                    entry['signature']=None;entry['attempts']=0
+                    if now<entry['settle_until']:
+                        entry['next']=now+.01;deadlines.append(entry['next'])
+                    continue
                 signature=placement['area']
                 if entry['signature']!=signature:entry.update(signature=signature,attempts=0)
                 if placement['changed'] and entry['attempts']<3:
                     reader.align_maximized_main(w,pid,apply=True)
                     entry['attempts']+=1;entry['next']=now+2
+                if now<entry['settle_until']:
+                    entry['next']=now+.01;deadlines.append(entry['next'])
             for w in mapped:
                 if w in workers or failures.get(w,0)>=3 or retry.get(w,0)>now:continue
                 workers[w]=subprocess.Popen([sys.executable,'-u',str(helper),'--window',str(w),'--seconds','0','--anchor','start','--parent-pid',str(os.getpid()),'--focus-socket',str(socket_path)])
             save()
-            wait=min(.75,max(0,min(pending.values())+.12-time.monotonic())) if pending else .75
-            select.select([receiver],[],[],wait)
+            if pending:deadlines.append(min(pending.values())+.12)
+            wait=0 if reader.window_changes_pending() else max(0,min(deadlines)-time.monotonic())
+            select.select([receiver,window_fd],[],[],wait)
     finally:
         running=False
         for proc in workers.values():end_worker(proc)

@@ -64,6 +64,24 @@ class Windows:
         if not self.d:raise RuntimeError('本机XWayland尚未就绪。')
         self.atom=x.XInternAtom(self.d,b'_NET_WM_PID',1)
 
+    def watch_window_changes(self):
+        """Wake on root window structure changes; never select input events."""
+        x=self.x
+        x.XSelectInput.argtypes=[P,U,c.c_long]
+        x.XConnectionNumber.argtypes=[P];x.XConnectionNumber.restype=I
+        x.XPending.argtypes=[P]
+        x.XNextEvent.argtypes=[P,c.POINTER(ClientEvent)]
+        x.XSelectInput(self.d,x.XDefaultRootWindow(self.d),1<<19)
+        x.XSync(self.d,0)
+        return x.XConnectionNumber(self.d)
+
+    def window_changes_pending(self):
+        return bool(self.x.XPending(self.d))
+
+    def drain_window_changes(self):
+        event=ClientEvent()
+        while self.x.XPending(self.d):self.x.XNextEvent(self.d,c.byref(event))
+
     def property32(self,window,name):
         x=self.x;atom=x.XInternAtom(self.d,name,1)
         if not atom:return []

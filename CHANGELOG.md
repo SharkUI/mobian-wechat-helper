@@ -5,6 +5,7 @@
 - Maximize each eligible main-process window once per XID/PID pair, instead of once per process. Moments shares the main WeChat process, so the previous bookkeeping skipped it after maximizing the chat window.
 - Keep transient/dialog/fullscreen exclusions and additionally skip modal windows during maximization and alignment.
 - Preserve title-free window discovery, manual window restores, touch handling and keyboard-focus recovery.
+- Wake on window-structure events, skip the initial-window grace period for later content windows, and settle placement promptly after the maximize request instead of waiting an extra second.
 
 ## v0.1.0 — 2026-11-24
 

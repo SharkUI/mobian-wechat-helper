@@ -29,6 +29,10 @@ Real-device user validation covers chat scrolling, left/right thumb arcs, Channe
 
 Since v0.1.1, maximization is remembered per window rather than per process. This covers Moments and other ordinary content windows opened later in the same WeChat process. Only owned, ordinary, non-transient, non-modal, non-fullscreen windows are eligible. No titles or Moments content are read. Manually restoring a window does not continuously force it back to maximized.
 
+Window-structure notifications wake the controller immediately. Later content windows skip the initial chat window's 1.5-second grace period, and work-area correction follows maximization without the former extra one-second wait. Structure observation does not select keyboard or touch input events.
+
+For v0.1.1 on the configuration above, repeated Moments close/reopen trials were user-confirmed to be noticeably faster, effectively filling the work area in one step, with closing and scrolling still working.
+
 - Other phones, desktop versions, WeChat versions and x86_64 are unverified. Process recognition requires the official package paths below; Flatpak, Waydroid and Android packages are not supported directly.
 - Scrolling uses discrete wheel steps, without native touch inertia or pixel-perfect tracking. All AppEx web windows receive one wheel step per gesture: Channels was tested, other applets and web controls may behave differently.
 - The keyboard does not open automatically. On Phosh, hold the middle of the bottom bar for about one second, then tap the text field again. A focus repair may cause a brief window blink.
