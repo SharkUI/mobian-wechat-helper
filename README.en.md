@@ -1,6 +1,6 @@
 # Mobian WeChat Helper
 
-[中文](README.md) · [Download v0.1.0](https://github.com/SharkUI/mobian-wechat-helper/releases/tag/v0.1.0) · [Report an issue](https://github.com/SharkUI/mobian-wechat-helper/issues)
+[中文](README.md) · [Download v0.1.1](https://github.com/SharkUI/mobian-wechat-helper/releases/tag/v0.1.1) · [Report an issue](https://github.com/SharkUI/mobian-wechat-helper/issues)
 
 A small experimental companion for **Linux WeChat on Mobian / Phosh phones**. It converts vertical touch gestures to wheel scrolling, works around lost on-screen keyboard focus, and corrects the main window's startup placement.
 
@@ -12,7 +12,7 @@ This project grew out of troubleshooting a real OnePlus 6. It is a compatibility
 | --- | --- |
 | Chat lists, messages and Channels ignore swipes or treat them as mouse drags | Recognize vertical gestures inside WeChat windows and emit wheel events, including short diagonal thumb arcs |
 | The keyboard is visible and a caret blinks, but typing stops after changing contacts or using search | After an eligible tap with the keyboard visible and missing X11 focus, briefly unmap/remap the main window to restore focus |
-| A maximized window starts at the physical screen corner and extends below the display | Maximize an ordinary main window at startup and align it to the desktop work area |
+| Main/Moments windows do not fill the work area, or extend below it | Maximize each ordinary main-process window once when discovered and align it to the desktop work area |
 | Closing the window leaves background processes running | Add an Exit WeChat desktop action that also stops the companion |
 
 ## Tested configuration and limitations
@@ -26,6 +26,8 @@ This project grew out of troubleshooting a real OnePlus 6. It is a compatibility
 | Display backend | `QT_QPA_PLATFORM=xcb` through XWayland |
 
 Real-device user validation covers chat scrolling, left/right thumb arcs, Channels navigation, repeated contact/search input, and **a full application exit/reopen from the icon with placement, input and scrolling working automatically**.
+
+Since v0.1.1, maximization is remembered per window rather than per process. This covers Moments and other ordinary content windows opened later in the same WeChat process. Only owned, ordinary, non-transient, non-modal, non-fullscreen windows are eligible. No titles or Moments content are read. Manually restoring a window does not continuously force it back to maximized.
 
 - Other phones, desktop versions, WeChat versions and x86_64 are unverified. Process recognition requires the official package paths below; Flatpak, Waydroid and Android packages are not supported directly.
 - Scrolling uses discrete wheel steps, without native touch inertia or pixel-perfect tracking. All AppEx web windows receive one wheel step per gesture: Channels was tested, other applets and web controls may behave differently.
@@ -49,13 +51,13 @@ Use the system `/usr/bin/python3`; no `pip` packages or virtual environment are 
 ### 2. Download a fixed release
 
 ```sh
-curl --fail --location --output mobian-wechat-helper-v0.1.0.tar.gz \
-  https://github.com/SharkUI/mobian-wechat-helper/archive/refs/tags/v0.1.0.tar.gz
-tar -xzf mobian-wechat-helper-v0.1.0.tar.gz
-cd mobian-wechat-helper-0.1.0
+curl --fail --location --output mobian-wechat-helper-v0.1.1.tar.gz \
+  https://github.com/SharkUI/mobian-wechat-helper/archive/refs/tags/v0.1.1.tar.gz
+tar -xzf mobian-wechat-helper-v0.1.1.tar.gz
+cd mobian-wechat-helper-0.1.1
 ```
 
-Review this README and the source before running the installer. Downloading does not execute it. Alternatively, clone the repository and check out `v0.1.0`.
+Review this README and the source before running the installer. Downloading does not execute it. Alternatively, clone the repository and check out `v0.1.1`.
 
 ### 3. Check the package paths and install
 
@@ -135,7 +137,7 @@ cat ~/.local/state/wechat-mobile/controller-status.json
 tail -n 40 ~/.local/state/wechat-mobile/controller.log
 ```
 
-`running` may be stale after an abnormal exit. Check the current boot ID, live controller PID and WeChat state together. Status `version: 5` is the inherited internal format; the public release is `v0.1.0`.
+`running` may be stale after an abnormal exit. Check the current boot ID, live controller PID and WeChat state together. Status `version: 5` is the inherited internal format; the public release is `v0.1.1`.
 
 Common `lastFocusRepair.result` values: `repaired`, `keyboard-hidden`, `focus-present`, `controls-held`, `microphone-busy`, and `state-unknown`. Unknown desktop/audio state or an active WeChat recording stream skips recovery conservatively.
 

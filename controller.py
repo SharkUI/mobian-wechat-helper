@@ -74,8 +74,11 @@ def main():
             for w,pid in mapped.items():
                 entry=geometry.setdefault(w,dict(seen=now,signature=None,attempts=0,next=0))
                 if now-entry['seen']<1.5 or now<entry['next']:continue
-                if pid not in startup_maximized and reader.request_startup_maximize(w,pid):
-                    startup_maximized.add(pid);entry['next']=now+1;continue
+                # Moments is another ordinary window in the main process.
+                # Remember each XID/PID pair so later windows are not skipped.
+                key=(w,pid)
+                if key not in startup_maximized and reader.request_startup_maximize(w,pid):
+                    startup_maximized.add(key);entry['next']=now+1;continue
                 placement=reader.align_maximized_main(w,pid)
                 if placement is None:entry['signature']=None;entry['attempts']=0;continue
                 signature=placement['area']

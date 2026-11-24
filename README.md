@@ -1,6 +1,6 @@
 # Mobian WeChat Helper
 
-[English](README.en.md) · [下载 v0.1.0](https://github.com/SharkUI/mobian-wechat-helper/releases/tag/v0.1.0) · [反馈问题](https://github.com/SharkUI/mobian-wechat-helper/issues)
+[English](README.en.md) · [下载 v0.1.1](https://github.com/SharkUI/mobian-wechat-helper/releases/tag/v0.1.1) · [反馈问题](https://github.com/SharkUI/mobian-wechat-helper/issues)
 
 让 **Mobian / Phosh 手机上的 Linux 微信**更容易使用的小工具：把手指上下划动转换成滚轮、在需要时恢复屏幕键盘的输入焦点，并修正启动时的窗口位置。
 
@@ -12,7 +12,7 @@
 | --- | --- |
 | 聊天列表、聊天内容、视频号不响应上下划，或把滑动当成鼠标拖动 | 只在微信窗口内识别纵向手势，转换成鼠标滚轮；支持左右手拇指的短斜弧线 |
 | 屏幕键盘能弹出，有光标，但切换联系人或搜索后打不出字 | 在键盘已展开、点过微信文字框且 X11 焦点丢失时，短暂隐藏并重新显示窗口，尝试恢复焦点 |
-| 最大化后窗口顶到物理屏幕左上角，底部出屏幕 | 启动时最大化普通主窗口，再按桌面可用区域校正位置 |
+| 主窗口或朋友圈没有铺满可用区域，或底部出屏幕 | 每个普通主进程窗口首次出现时分别最大化，再按桌面可用区域校正位置 |
 | 关闭窗口后微信仍留在后台 | 图标长按菜单增加“退出微信”，同时停止本工具 |
 
 ## 已验证环境与限制
@@ -26,6 +26,8 @@
 | 运行方式 | `QT_QPA_PLATFORM=xcb`，通过 XWayland 显示 |
 
 用户已验证：聊天滚动、左右手短弧线、视频号切换、连续更换联系人和搜索输入，以及**彻底退出后从图标重开，定位、输入、滑动自动生效**。
+
+从 v0.1.1 起，最大化记录由“每个进程一次”改成“每个窗口一次”，覆盖同一微信进程后来打开的朋友圈等普通内容窗口。只处理已核对所有权、非临时、非模态、非全屏的普通窗口；不通过标题识别或读取朋友圈内容。手动恢复窗口后不会持续强制最大化。
 
 - 其他手机、桌面、微信版本和 x86_64 尚未验证；本工具按下列官方包路径识别进程，不支持直接用于 Flatpak、Waydroid 或 Android 微信。
 - 滚动仍然是分步滚轮，没有原生手机那样的逐像素跟手和惯性。微信 AppEx 网页窗口统一按“一次手势一格滚轮”处理，视频号已验证，其他小程序／网页控件可能不合适。
@@ -49,13 +51,13 @@ sudo apt install python3 python3-gi xwayland libx11-6 libxi6 libxtst6 pulseaudio
 ### 2. 下载固定版本
 
 ```sh
-curl --fail --location --output mobian-wechat-helper-v0.1.0.tar.gz \
-  https://github.com/SharkUI/mobian-wechat-helper/archive/refs/tags/v0.1.0.tar.gz
-tar -xzf mobian-wechat-helper-v0.1.0.tar.gz
-cd mobian-wechat-helper-0.1.0
+curl --fail --location --output mobian-wechat-helper-v0.1.1.tar.gz \
+  https://github.com/SharkUI/mobian-wechat-helper/archive/refs/tags/v0.1.1.tar.gz
+tar -xzf mobian-wechat-helper-v0.1.1.tar.gz
+cd mobian-wechat-helper-0.1.1
 ```
 
-先阅读本 README 和源码；下载不会自动执行安装。也可以用 Git 获取并检出 `v0.1.0`。
+先阅读本 README 和源码；下载不会自动执行安装。也可以用 Git 获取并检出 `v0.1.1`。
 
 ### 3. 检查包路径并安装
 
@@ -137,7 +139,7 @@ cat ~/.local/state/wechat-mobile/controller-status.json
 tail -n 40 ~/.local/state/wechat-mobile/controller.log
 ```
 
-摘要中的 `running` 可能是上次异常退出留下的旧值；应同时核对当前开机的 `bootId`、存活的 `controllerPid` 和微信状态。`version: 5` 是沿用的内部状态格式，公开发行版本是 `v0.1.0`。
+摘要中的 `running` 可能是上次异常退出留下的旧值；应同时核对当前开机的 `bootId`、存活的 `controllerPid` 和微信状态。`version: 5` 是沿用的内部状态格式，公开发行版本是 `v0.1.1`。
 
 `lastFocusRepair.result` 常见值：`repaired` 已恢复，`keyboard-hidden` 键盘没展开，`focus-present` 已有 X11 焦点，`controls-held` 正有鼠标按键／空格按住，`microphone-busy` 微信存在录音流，`state-unknown` 无法确认桌面或音频状态。后两种情况会保守跳过，不反复刷新窗口。
 

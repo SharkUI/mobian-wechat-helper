@@ -80,11 +80,16 @@ class Windows:
             if proc.stat().st_uid!=os.getuid() or (proc/'exe').resolve(strict=True)!=MAIN:return None
         except (FileNotFoundError,PermissionError):return None
         if self.property32(window,b'_NET_WM_PID')!=[pid] or self.property32(window,b'WM_TRANSIENT_FOR'):return None
-        x=self.x;states=set(self.property32(window,b'_NET_WM_STATE'))
+        x=self.x
+        types=self.property32(window,b'_NET_WM_WINDOW_TYPE')
+        normal=x.XInternAtom(self.d,b'_NET_WM_WINDOW_TYPE_NORMAL',1)
+        dialog=x.XInternAtom(self.d,b'_NET_WM_WINDOW_TYPE_DIALOG',1)
+        if not normal or normal not in types or dialog in types:return None
+        states=set(self.property32(window,b'_NET_WM_STATE'))
         required={x.XInternAtom(self.d,name,1) for name in (b'_NET_WM_STATE_MAXIMIZED_HORZ',b'_NET_WM_STATE_MAXIMIZED_VERT')}
         if 0 in required or not required<=states:return None
-        fullscreen=x.XInternAtom(self.d,b'_NET_WM_STATE_FULLSCREEN',1)
-        if fullscreen and fullscreen in states:return None
+        excluded={x.XInternAtom(self.d,name,1) for name in (b'_NET_WM_STATE_FULLSCREEN',b'_NET_WM_STATE_MODAL')}
+        if states&excluded:return None
         attr=Attr();root=Attr();root_window=x.XDefaultRootWindow(self.d)
         if not x.XGetWindowAttributes(self.d,window,c.byref(attr)) or attr.map_state!=2 or attr.override_redirect:return None
         if not x.XGetWindowAttributes(self.d,root_window,c.byref(root)):return None
@@ -102,7 +107,7 @@ class Windows:
         return result
 
     def request_startup_maximize(self,window,pid):
-        """Maximize one ordinary main window at startup, leaving later restores alone."""
+        """Maximize an ordinary main-process window once, leaving later restores alone."""
         proc=pathlib.Path('/proc')/str(pid)
         try:
             if proc.stat().st_uid!=os.getuid() or (proc/'exe').resolve(strict=True)!=MAIN:return False
@@ -111,9 +116,12 @@ class Windows:
         x=self.x;attr=Attr()
         if not x.XGetWindowAttributes(self.d,window,c.byref(attr)) or attr.map_state!=2 or attr.override_redirect or min(attr.width,attr.height)<200:return False
         normal=x.XInternAtom(self.d,b'_NET_WM_WINDOW_TYPE_NORMAL',1)
-        if not normal or normal not in self.property32(window,b'_NET_WM_WINDOW_TYPE'):return False
+        dialog=x.XInternAtom(self.d,b'_NET_WM_WINDOW_TYPE_DIALOG',1)
+        types=self.property32(window,b'_NET_WM_WINDOW_TYPE')
+        if not normal or normal not in types or dialog in types:return False
         states=set(self.property32(window,b'_NET_WM_STATE'))
-        if x.XInternAtom(self.d,b'_NET_WM_STATE_FULLSCREEN',1) in states:return False
+        excluded={x.XInternAtom(self.d,name,1) for name in (b'_NET_WM_STATE_FULLSCREEN',b'_NET_WM_STATE_MODAL')}
+        if states&excluded:return False
         horz=x.XInternAtom(self.d,b'_NET_WM_STATE_MAXIMIZED_HORZ',0);vert=x.XInternAtom(self.d,b'_NET_WM_STATE_MAXIMIZED_VERT',0)
         if {horz,vert}<=states:return True
         event=ClientEvent();event.client.type=33;event.client.display=self.d;event.client.window=window

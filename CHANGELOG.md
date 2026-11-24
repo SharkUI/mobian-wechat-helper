@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.1 — 2026-11-24
+
+- Maximize each eligible main-process window once per XID/PID pair, instead of once per process. Moments shares the main WeChat process, so the previous bookkeeping skipped it after maximizing the chat window.
+- Keep transient/dialog/fullscreen exclusions and additionally skip modal windows during maximization and alignment.
+- Preserve title-free window discovery, manual window restores, touch handling and keyboard-focus recovery.
+
 ## v0.1.0 — 2026-11-24
 
 First public experimental release, extracted from a working OnePlus 6 / Mobian 13 installation.
